@@ -1,2 +1,8 @@
 rate-my-unhinged-decision/
 .DS_Store
+node_modules/
+.next/
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
