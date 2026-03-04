@@ -12,9 +12,8 @@ function parseFlexibleDate(input: string): {
   precision: DatePrecision;
 } | null {
   const trimmed = input.trim();
-  if (!trimmed) return null;
+  if (!trimmed || trimmed.toLowerCase() === "right now") return null;
 
-  // Try exact date: "March 15, 2024" or "2024-03-15" or "03/15/2024"
   const exactDate = new Date(trimmed);
   if (!isNaN(exactDate.getTime()) && trimmed.length > 7) {
     const yyyy = exactDate.getFullYear();
@@ -23,7 +22,6 @@ function parseFlexibleDate(input: string): {
     return { date: `${yyyy}-${mm}-${dd}`, precision: "exact" };
   }
 
-  // Try month+year: "June 2019" or "Jun 2019"
   const monthYearMatch = trimmed.match(
     /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[\s,]+(\d{4})$/i
   );
@@ -36,7 +34,6 @@ function parseFlexibleDate(input: string): {
     return { date: `${monthYearMatch[2]}-${mm}-15`, precision: "month" };
   }
 
-  // Try year only: "2019"
   const yearMatch = trimmed.match(/^(\d{4})$/);
   if (yearMatch) {
     return { date: `${yearMatch[1]}-06-15`, precision: "year" };
@@ -46,7 +43,7 @@ function parseFlexibleDate(input: string): {
 }
 
 function validateDate(dateStr: string): string | null {
-  const date = new Date(dateStr);
+  const date = new Date(dateStr + "T12:00:00");
   const now = new Date();
   if (date > now) return "This decision hasn't happened yet. Come back after.";
   if (date.getFullYear() < 1950)
@@ -55,12 +52,22 @@ function validateDate(dateStr: string): string | null {
 }
 
 const PLACEHOLDERS = [
-  "to quit my job",
-  "to say yes",
-  "to leave",
-  "to start over",
-  "to tell them the truth",
-  "to let go",
+  "to walk away from everything I built",
+  "to choose myself for once",
+  "to say the thing I'd been holding back",
+  "to stop pretending it didn't matter",
+  "to let go of the version they needed",
+  "to trust my gut over their advice",
+  "to close the door I kept leaving open",
+  "to bet everything on the idea",
+  "to forgive them",
+  "to start over at 35",
+];
+
+const LOADING_STAGES = [
+  "Accessing records...",
+  "Cross-referencing orbital data...",
+  "Decrypting briefing...",
 ];
 
 export default function InputForm({ onBriefingReady }: InputFormProps) {
@@ -70,78 +77,77 @@ export default function InputForm({ onBriefingReady }: InputFormProps) {
   const [dateError, setDateError] = useState<string | null>(null);
   const [dateValid, setDateValid] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [showDecision, setShowDecision] = useState(false);
-  const [showReason, setShowReason] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [step, setStep] = useState(1); // 1=date, 2=decision, 3=reason
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [placeholderOpacity, setPlaceholderOpacity] = useState(1);
 
-  const parsedRef = useRef<{ date: string; precision: DatePrecision } | null>(
-    null
-  );
-  const prefetchRef = useRef<Promise<BriefingData> | null>(null);
-  const prefetchDateRef = useRef<string>("");
-  const placeholderRef = useRef(
-    PLACEHOLDERS[Math.floor(Math.random() * PLACEHOLDERS.length)]
-  );
+  const parsedRef = useRef<{ date: string; precision: DatePrecision } | null>(null);
 
+  // Cycle decision placeholders
   useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
+    if (decision.length > 0) return;
+    const interval = setInterval(() => {
+      setPlaceholderOpacity(0);
+      setTimeout(() => {
+        setPlaceholderIndex((i) => (i + 1) % PLACEHOLDERS.length);
+        setPlaceholderOpacity(1);
+      }, 350);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [decision]);
+
+  // Loading stage progression
+  useEffect(() => {
+    if (!loading) { setLoadingStage(0); return; }
+    const t1 = setTimeout(() => setLoadingStage(1), 1500);
+    const t2 = setTimeout(() => setLoadingStage(2), 3000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [loading]);
+
+  const handleDateChange = useCallback((value: string) => {
+    setDateInput(value);
+    setDateError(null);
+    setDateValid(false);
+    setApiError(null);
+
+    const parsed = parseFlexibleDate(value);
+    if (!parsed) {
+      parsedRef.current = null;
+      return;
+    }
+
+    const error = validateDate(parsed.date);
+    if (error) {
+      setDateError(error);
+      parsedRef.current = null;
+      return;
+    }
+
+    parsedRef.current = parsed;
+    setDateValid(true);
+    setStep(2);
   }, []);
 
-  const handleDateChange = useCallback(
-    (value: string) => {
-      setDateInput(value);
-      setDateError(null);
-      setDateValid(false);
-      setApiError(null);
+  const handleRightNow = useCallback(() => {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    setDateInput("right now");
+    parsedRef.current = { date: `${yyyy}-${mm}-${dd}`, precision: "exact" };
+    setDateValid(true);
+    setDateError(null);
+    setStep(2);
+  }, []);
 
-      const parsed = parseFlexibleDate(value);
-      if (!parsed) {
-        parsedRef.current = null;
-        if (isMobile) setShowDecision(false);
-        return;
-      }
-
-      const error = validateDate(parsed.date);
-      if (error) {
-        setDateError(error);
-        parsedRef.current = null;
-        if (isMobile) setShowDecision(false);
-        return;
-      }
-
-      parsedRef.current = parsed;
-      setDateValid(true);
-      if (isMobile) setShowDecision(true);
-
-      // Pre-fetch data silently
-      if (prefetchDateRef.current !== parsed.date) {
-        prefetchDateRef.current = parsed.date;
-        prefetchRef.current = fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: parsed.date,
-            precision: parsed.precision,
-            decision: "placeholder",
-          }),
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null);
-      }
-    },
-    [isMobile]
-  );
-
-  const handleDecisionChange = useCallback(
-    (value: string) => {
-      if (value.length <= 100) {
-        setDecision(value);
-        if (isMobile && value.length > 0) setShowReason(true);
-      }
-    },
-    [isMobile]
-  );
+  const handleDecisionChange = useCallback((value: string) => {
+    if (value.length <= 100) {
+      setDecision(value);
+      if (value.length > 0 && step < 3) setStep(3);
+    }
+  }, [step]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -182,123 +188,195 @@ export default function InputForm({ onBriefingReady }: InputFormProps) {
 
   const canSubmit = dateValid && decision.trim().length > 0 && !loading;
 
-  const decisionCharColor =
-    decision.length >= 95
-      ? "text-accent-warn"
-      : decision.length >= 80
-        ? "text-accent-amber"
-        : "text-fg-muted";
-
-  const reasonCharColor =
-    reason.length >= 130
-      ? "text-accent-warn"
-      : reason.length >= 112
-        ? "text-accent-amber"
-        : "text-fg-muted";
-
   return (
-    <form onSubmit={handleSubmit} className="w-full max-w-lg mx-auto space-y-6">
-      {/* Date field */}
-      <div className="space-y-2">
-        <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted">
-          When it happened
-        </label>
-        <input
-          type="text"
-          value={dateInput}
-          onChange={(e) => handleDateChange(e.target.value)}
-          placeholder="March 15, 2024"
-          className="w-full bg-transparent border border-border rounded-none px-4 py-3 font-mono text-fg-heading text-lg focus:outline-none focus:border-accent transition-colors placeholder:text-fg-muted/40"
-          autoFocus
-        />
-        {dateError && (
-          <p className="font-mono text-xs text-accent-warn">{dateError}</p>
-        )}
-        {dateValid && !dateError && (
-          <p className="font-mono text-xs text-accent">Date locked in.</p>
-        )}
+    <div className="w-full max-w-xl mx-auto">
+      {/* Header */}
+      <div className="text-left mb-12 md:mb-16 space-y-4">
+        <p className="font-mono text-[10px] text-fg-muted/40 uppercase tracking-[0.4em]">
+          File accessed //{" "}
+          {new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </p>
+        <h1 className="font-mono text-3xl md:text-5xl text-fg-heading font-bold tracking-tight leading-[0.95]">
+          While You Were
+          <br />
+          <span className="text-accent">Deciding</span>
+        </h1>
+        <p className="font-sans text-sm text-fg-muted max-w-sm leading-relaxed">
+          You made a decision that changed your life.
+          <br />
+          The universe didn&apos;t pause. Here&apos;s what it was doing.
+        </p>
+        <div className="w-12 h-px bg-accent/30" />
       </div>
 
-      {/* Decision field — always on desktop, progressive on mobile */}
-      {(!isMobile || showDecision) && (
-        <div
-          className="space-y-2 animate-in fade-in duration-300"
-          style={{ animationFillMode: "both" }}
-        >
-          <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted">
-            The decision
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Date field */}
+        <div className="space-y-2">
+          <label className="block font-mono text-[10px] uppercase tracking-[0.3em] text-fg-muted/50">
+            Date of decision
           </label>
-          <input
-            type="text"
-            value={decision}
-            onChange={(e) => handleDecisionChange(e.target.value)}
-            placeholder={placeholderRef.current}
-            maxLength={100}
-            className="w-full bg-transparent border border-border rounded-none px-4 py-3 font-sans text-fg-heading text-lg focus:outline-none focus:border-accent transition-colors placeholder:text-fg-muted/40"
-          />
-          <p className={`font-mono text-xs text-right ${decisionCharColor}`}>
-            {decision.length}/100
-          </p>
-        </div>
-      )}
-
-      {/* Reason field — always on desktop, progressive on mobile */}
-      {(!isMobile || showReason) && (
-        <div
-          className="space-y-2 animate-in fade-in duration-300"
-          style={{ animationFillMode: "both" }}
-        >
-          <label className="block font-mono text-xs uppercase tracking-widest text-fg-muted">
-            Why it felt enormous{" "}
-            <span className="text-fg-muted/60 normal-case tracking-normal">
-              (optional)
-            </span>
-          </label>
-          <textarea
-            value={reason}
-            onChange={(e) =>
-              e.target.value.length <= 140 && setReason(e.target.value)
-            }
-            placeholder="One word is enough"
-            maxLength={140}
-            rows={2}
-            className="w-full bg-transparent border border-border rounded-none px-4 py-3 font-sans text-fg resize-none focus:outline-none focus:border-accent transition-colors placeholder:text-fg-muted/40"
-          />
-          <div className="flex justify-between items-center">
-            <p className="font-mono text-[10px] text-fg-muted/50">
-              This stays between you and the cosmos.
-            </p>
-            <p className={`font-mono text-xs ${reasonCharColor}`}>
-              {reason.length}/140
-            </p>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-accent/60 text-lg select-none shrink-0">&gt;</span>
+            <input
+              type="text"
+              value={dateInput}
+              onChange={(e) => handleDateChange(e.target.value)}
+              placeholder="March 15, 2024"
+              className={`w-full bg-transparent border-0 border-b px-0 py-2 font-mono text-fg-heading text-lg focus:outline-none transition-colors placeholder:text-fg-muted/20 ${
+                dateValid ? "border-accent/40" : "border-border"
+              }`}
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            {dateError && (
+              <p className="font-mono text-[10px] text-accent-warn">{dateError}</p>
+            )}
+            {dateValid && !dateError && (
+              <p className="font-mono text-[10px] text-accent/70">Locked in.</p>
+            )}
+            {!dateValid && !dateError && (
+              <button
+                type="button"
+                onClick={handleRightNow}
+                className="font-mono text-[10px] text-accent/40 hover:text-accent/70 transition-colors tracking-wide"
+              >
+                [ I&apos;m deciding right now ]
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {/* Submit */}
-      <div className="pt-2">
-        <button
-          type="submit"
-          disabled={!canSubmit}
-          className={`w-full font-mono text-sm uppercase tracking-[0.3em] py-4 border transition-all duration-300 ${
-            canSubmit
-              ? "border-accent text-accent hover:bg-accent/10 cursor-pointer"
-              : "border-border text-fg-muted/40 cursor-not-allowed"
-          } ${loading ? "animate-pulse" : ""}`}
-        >
-          {loading ? "Decrypting..." : "Declassify"}
-        </button>
-      </div>
+        {/* Divider */}
+        {step >= 2 && (
+          <div className="overflow-hidden h-px">
+            <div
+              className="h-px bg-accent/15"
+              style={{ animation: "draw-line 0.6s ease-out forwards" }}
+            />
+          </div>
+        )}
 
-      {apiError && (
-        <p className="font-mono text-xs text-accent-warn text-center">
-          {apiError}
+        {/* Decision field */}
+        {step >= 2 && (
+          <div className="space-y-2 animate-slide-up" style={{ animationDuration: "0.4s" }}>
+            <label className="block font-mono text-[10px] uppercase tracking-[0.3em] text-fg-muted/50">
+              I decided...
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-accent/60 text-lg select-none shrink-0">&gt;</span>
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={decision}
+                  onChange={(e) => handleDecisionChange(e.target.value)}
+                  maxLength={100}
+                  className="relative z-10 w-full bg-transparent border-0 border-b border-border px-0 py-2 font-sans text-fg-heading text-lg focus:outline-none focus:border-accent/40 transition-colors"
+                />
+                {decision.length === 0 && (
+                  <span
+                    className="absolute left-0 top-2 font-sans text-lg text-fg-muted/20 pointer-events-none transition-opacity duration-300"
+                    style={{ opacity: placeholderOpacity }}
+                  >
+                    {PLACEHOLDERS[placeholderIndex]}
+                  </span>
+                )}
+              </div>
+            </div>
+            <p
+              className={`font-mono text-[10px] text-right ${
+                decision.length >= 95
+                  ? "text-accent-warn"
+                  : decision.length >= 80
+                    ? "text-accent-amber"
+                    : "text-fg-muted/30"
+              }`}
+            >
+              {decision.length}/100
+            </p>
+          </div>
+        )}
+
+        {/* Divider */}
+        {step >= 3 && (
+          <div className="overflow-hidden h-px">
+            <div
+              className="h-px bg-accent/10"
+              style={{ animation: "draw-line 0.6s ease-out forwards" }}
+            />
+          </div>
+        )}
+
+        {/* Reason field */}
+        {step >= 3 && (
+          <div className="space-y-2 animate-slide-up" style={{ animationDuration: "0.4s" }}>
+            <label className="block font-mono text-[10px] uppercase tracking-[0.3em] text-fg-muted/50">
+              And it mattered because
+              <span className="text-fg-muted/20 normal-case tracking-normal ml-1">
+                (optional)
+              </span>
+            </label>
+            <div className="flex items-start gap-2">
+              <span className="font-mono text-accent/40 text-lg select-none shrink-0 pt-2">&gt;</span>
+              <textarea
+                value={reason}
+                onChange={(e) =>
+                  e.target.value.length <= 140 && setReason(e.target.value)
+                }
+                placeholder="One word is enough"
+                maxLength={140}
+                rows={2}
+                className="w-full bg-transparent border-0 border-b border-border px-0 py-2 font-sans text-fg resize-none focus:outline-none focus:border-accent/30 transition-colors placeholder:text-fg-muted/15"
+              />
+            </div>
+            <div className="flex justify-between items-center">
+              <p className="font-mono text-[9px] text-fg-muted/25">
+                This stays between you and the cosmos.
+              </p>
+              <p
+                className={`font-mono text-[10px] ${
+                  reason.length >= 130 ? "text-accent-warn" : "text-fg-muted/25"
+                }`}
+              >
+                {reason.length}/140
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Submit */}
+        {step >= 2 && (
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className={`w-full font-mono text-xs uppercase tracking-[0.25em] md:tracking-[0.4em] py-4 border transition-all duration-300 ${
+                canSubmit
+                  ? "bg-accent/8 border-accent text-accent hover:bg-accent/15 cursor-pointer"
+                  : "border-border/50 text-fg-muted/20 cursor-not-allowed"
+              }`}
+              style={loading ? { animation: "border-sweep 2s ease-in-out infinite" } : undefined}
+            >
+              {loading ? `[ ${LOADING_STAGES[loadingStage]} ]` : "[ Declassify ]"}
+            </button>
+          </div>
+        )}
+
+        {apiError && (
+          <p className="font-mono text-xs text-accent-warn text-center pt-2">
+            {apiError}
+          </p>
+        )}
+
+        <p className="font-mono text-[9px] text-fg-muted/25 text-center pt-2">
+          No account needed. Nothing is stored. This is just yours.
         </p>
-      )}
-
-      <p className="font-mono text-[10px] text-fg-muted/40 text-center">
-        No account needed. Nothing is stored. This is just yours.
-      </p>
-    </form>
+      </form>
+    </div>
   );
 }

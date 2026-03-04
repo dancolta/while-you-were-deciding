@@ -8,46 +8,61 @@ interface RevealSequenceProps {
   onComplete: () => void;
 }
 
-interface RevealStep {
-  id: string;
-  content: React.ReactNode;
-  delay: number; // ms from start
-}
-
-function TypewriterText({
+function DecryptText({
   text,
-  speed = 40,
-  onDone,
-  skip,
+  active,
+  mono = false,
 }: {
   text: string;
-  speed?: number;
-  onDone?: () => void;
-  skip: boolean;
+  active: boolean;
+  mono?: boolean;
 }) {
-  const [displayed, setDisplayed] = useState(skip ? text : "");
-  const indexRef = useRef(0);
+  const GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*";
+  const [displayed, setDisplayed] = useState("");
 
   useEffect(() => {
-    if (skip) {
-      setDisplayed(text);
-      onDone?.();
-      return;
-    }
-    indexRef.current = 0;
-    setDisplayed("");
-    const interval = setInterval(() => {
-      indexRef.current++;
-      setDisplayed(text.slice(0, indexRef.current));
-      if (indexRef.current >= text.length) {
-        clearInterval(interval);
-        onDone?.();
-      }
-    }, speed);
-    return () => clearInterval(interval);
-  }, [text, speed, skip, onDone]);
+    if (!active) { setDisplayed(""); return; }
 
-  return <>{displayed}</>;
+    const chars = text.split("");
+    const resolved = new Array(chars.length).fill(false);
+    const current = new Array(chars.length).fill(" ");
+
+    chars.forEach((c, i) => {
+      if (c === " " || c === "\n") {
+        resolved[i] = true;
+        current[i] = c;
+      }
+    });
+
+    const interval = setInterval(() => {
+      const firstUnresolved = resolved.indexOf(false);
+      if (firstUnresolved === -1) {
+        clearInterval(interval);
+        return;
+      }
+
+      if (Math.random() < 0.3) {
+        resolved[firstUnresolved] = true;
+        current[firstUnresolved] = chars[firstUnresolved];
+      }
+
+      for (let i = 0; i < chars.length; i++) {
+        if (!resolved[i]) {
+          current[i] = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        }
+      }
+
+      setDisplayed(current.join(""));
+    }, 35);
+
+    return () => clearInterval(interval);
+  }, [text, active]);
+
+  return (
+    <span className={mono ? "font-mono" : "font-sans"}>
+      {active ? displayed || text : text}
+    </span>
+  );
 }
 
 function formatDate(dateStr: string): string {
@@ -65,20 +80,18 @@ export default function RevealSequence({
 }: RevealSequenceProps) {
   const [visibleSteps, setVisibleSteps] = useState<Set<string>>(new Set());
   const [skipped, setSkipped] = useState(false);
-  const [typewriterDone, setTypewriterDone] = useState(false);
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  const reducedMotion = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  const hasCompletedRef = useRef(false);
+
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    reducedMotion.current = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-    if (reducedMotion.current) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setSkipped(true);
     }
   }, []);
 
-  // Build the content blocks
   const formattedDate = formatDate(data.date);
 
   const earthquakeText = data.earthquake
@@ -90,175 +103,285 @@ export default function RevealSequence({
     : null;
 
   const issText = data.iss
-    ? `The International Space Station was ${data.iss.location_name} — ${data.crew ? `Expedition ${data.crew.expedition}, crew of ${data.crew.crew_count}` : "orbiting at 17,500 mph"}.${data.crew ? ` ${data.crew.notable_member} was aboard.` : ""}`
+    ? `The International Space Station was over ${data.iss.location_name} — ${data.crew ? `Expedition ${data.crew.expedition}, crew of ${data.crew.crew_count}` : "orbiting at 17,500 mph"}.${data.crew ? ` ${data.crew.notable_member} was aboard.` : ""}`
     : "The ISS was out there somewhere at 17,500 mph — and so are you.";
 
-  const steps: RevealStep[] = [
-    {
-      id: "timestamp",
-      delay: 300,
-      content: (
-        <p className="font-mono text-xs text-fg-muted tracking-widest uppercase">
-          <TypewriterText
-            text={`Briefing initiated // ${formattedDate}`}
-            speed={30}
-            skip={skipped}
-          />
-        </p>
-      ),
-    },
-    {
-      id: "decision",
-      delay: 800,
-      content: (
-        <h1 className="font-sans text-2xl md:text-3xl text-fg-heading font-semibold leading-tight">
-          While you were deciding
-          <br />
-          <span className="text-accent">
-            <TypewriterText
-              text={`${data.decision}...`}
-              speed={40}
-              onDone={() => setTypewriterDone(true)}
-              skip={skipped}
-            />
-          </span>
-        </h1>
-      ),
-    },
-    {
-      id: "meanwhile",
-      delay: 1500,
-      content: (
-        <p className="font-sans text-sm text-fg-muted italic">
-          {data.meanwhile_line}
-        </p>
-      ),
-    },
-    {
-      id: "earthquake",
-      delay: 2100,
-      content: (
-        <p className="font-sans text-base text-fg leading-relaxed">
-          {earthquakeText}
-        </p>
-      ),
-    },
-    ...(asteroidText
-      ? [
-          {
-            id: "asteroid",
-            delay: 2800,
-            content: (
-              <p className="font-sans text-base text-fg leading-relaxed">
-                {asteroidText}
-              </p>
-            ),
-          },
-        ]
-      : []),
-    {
-      id: "iss",
-      delay: asteroidText ? 3500 : 2800,
-      content: (
-        <p className="font-sans text-base text-fg leading-relaxed">{issText}</p>
-      ),
-    },
-    {
-      id: "demographics",
-      delay: asteroidText ? 3900 : 3200,
-      content: (
-        <p className="font-sans text-sm text-fg-muted">
-          {data.demographics.framed}
-        </p>
-      ),
-    },
-    {
-      id: "significance",
-      delay: asteroidText ? 4200 : 3500,
-      content: (
-        <div className="space-y-1">
-          <p className="font-mono text-xs text-fg-muted/60">
-            Cosmic significance: 0.0000000%
-          </p>
-          <p className="font-sans text-lg text-fg-heading font-medium">
-            To you: immeasurable.
-          </p>
-        </div>
-      ),
-    },
-    {
-      id: "closing",
-      delay: asteroidText ? 5000 : 4300,
-      content: (
-        <p className="font-sans text-base text-fg-heading leading-relaxed pt-4 border-t border-border">
-          {data.closing_line}
-        </p>
-      ),
-    },
+  const stepIds = [
+    "timestamp",
+    "decision",
+    "meanwhile",
+    "static1",
+    "earthquake",
+    ...(asteroidText ? ["asteroid"] : []),
+    "static2",
+    "iss",
+    "demographics",
+    "significance",
+    "closing",
   ];
+
+  const baseDelay = 400;
+  const stepDelay = 700;
+
+  const fireComplete = useCallback(() => {
+    if (!hasCompletedRef.current) {
+      hasCompletedRef.current = true;
+      onCompleteRef.current();
+    }
+  }, []);
 
   const handleSkip = useCallback(() => {
     if (skipped) return;
     setSkipped(true);
     timeoutsRef.current.forEach(clearTimeout);
     timeoutsRef.current = [];
-    setVisibleSteps(new Set(steps.map((s) => s.id)));
-    onComplete();
-  }, [skipped, steps, onComplete]);
+    setVisibleSteps(new Set(stepIds));
+    setTimeout(fireComplete, 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [skipped, fireComplete]);
 
   useEffect(() => {
-    if (skipped) {
-      setVisibleSteps(new Set(steps.map((s) => s.id)));
-      const t = setTimeout(onComplete, 600);
+    if (skipped && visibleSteps.size === 0) {
+      setVisibleSteps(new Set(stepIds));
+      const t = setTimeout(fireComplete, 600);
       return () => clearTimeout(t);
     }
 
-    // Choreograph the reveal
-    const timeouts: NodeJS.Timeout[] = [];
-    for (const step of steps) {
-      const t = setTimeout(() => {
-        setVisibleSteps((prev) => new Set([...prev, step.id]));
-      }, step.delay);
-      timeouts.push(t);
-    }
+    if (skipped) return;
 
-    // Mark complete after last step + buffer
-    const lastDelay = steps[steps.length - 1].delay;
-    const completeTimeout = setTimeout(onComplete, lastDelay + 1000);
+    const timeouts: NodeJS.Timeout[] = [];
+    stepIds.forEach((id, i) => {
+      const t = setTimeout(() => {
+        setVisibleSteps((prev) => new Set([...prev, id]));
+      }, baseDelay + i * stepDelay);
+      timeouts.push(t);
+    });
+
+    const completeTimeout = setTimeout(
+      fireComplete,
+      baseDelay + stepIds.length * stepDelay + 1200
+    );
     timeouts.push(completeTimeout);
 
     timeoutsRef.current = timeouts;
     return () => timeouts.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skipped]);
+  }, [skipped, fireComplete]);
+
+  const isVisible = (id: string) => visibleSteps.has(id);
 
   return (
     <div
-      className="w-full max-w-lg mx-auto space-y-6 py-8 cursor-pointer min-h-[60dvh]"
+      className="w-full max-w-xl mx-auto py-8 cursor-pointer min-h-[60dvh] scanlines relative"
       onClick={handleSkip}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && handleSkip()}
       aria-label="Click to skip animation"
     >
-      {steps.map((step) => (
+      <div className="space-y-6">
+        {/* Timestamp */}
         <div
-          key={step.id}
           className={`transition-all duration-500 ${
-            visibleSteps.has(step.id)
+            isVisible("timestamp")
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-2"
           }`}
-          style={{
-            transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
-          }}
         >
-          {visibleSteps.has(step.id) && step.content}
+          {isVisible("timestamp") && (
+            <p className="font-mono text-[10px] text-fg-muted/40 uppercase tracking-[0.4em]">
+              <DecryptText
+                text={`Briefing initiated // ${formattedDate}`}
+                active={isVisible("timestamp")}
+                mono
+              />
+            </p>
+          )}
         </div>
-      ))}
 
-      {!skipped && visibleSteps.size > 0 && visibleSteps.size < steps.length && (
-        <p className="font-mono text-[10px] text-fg-muted/30 text-center pt-4 animate-pulse">
+        {/* Decision */}
+        <div
+          className={`transition-all duration-500 ${
+            isVisible("decision")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("decision") && (
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] text-fg-muted/50 uppercase tracking-[0.3em]">
+                While you were deciding
+              </p>
+              <h1 className="font-sans text-2xl md:text-3xl text-fg-heading font-bold leading-tight">
+                <span className="text-accent">{data.decision}</span>
+              </h1>
+            </div>
+          )}
+        </div>
+
+        {/* Meanwhile */}
+        <div
+          className={`transition-all duration-500 ${
+            isVisible("meanwhile")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("meanwhile") && (
+            <p className="font-sans text-sm text-fg-muted/70 italic">
+              {data.meanwhile_line}
+            </p>
+          )}
+        </div>
+
+        {/* Static burst 1 */}
+        <div
+          className={`transition-all duration-300 ${
+            isVisible("static1")
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        >
+          {isVisible("static1") && (
+            <div className="h-px w-full" style={{
+              background: "repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(78,204,163,0.15) 2px, rgba(78,204,163,0.15) 4px)",
+            }} />
+          )}
+        </div>
+
+        {/* Earthquake */}
+        <div
+          className={`transition-all duration-500 ${
+            isVisible("earthquake")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("earthquake") && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[10px] text-accent/50 uppercase tracking-[0.3em]">
+                ◆ Seismic
+              </p>
+              <p className="font-sans text-base text-fg leading-relaxed pl-3 border-l border-accent/20">
+                {earthquakeText}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Asteroid */}
+        {asteroidText && (
+          <div
+            className={`transition-all duration-500 ${
+              isVisible("asteroid")
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2"
+            }`}
+          >
+            {isVisible("asteroid") && (
+              <div className="space-y-1.5">
+                <p className="font-mono text-[10px] text-accent/50 uppercase tracking-[0.3em]">
+                  ◆ Near-earth object
+                </p>
+                <p className="font-sans text-base text-fg leading-relaxed pl-3 border-l border-accent/20">
+                  {asteroidText}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Static burst 2 */}
+        <div
+          className={`transition-all duration-300 ${
+            isVisible("static2")
+              ? "opacity-100"
+              : "opacity-0"
+          }`}
+        >
+          {isVisible("static2") && (
+            <div className="h-px w-full" style={{
+              background: "repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(78,204,163,0.1) 3px, rgba(78,204,163,0.1) 5px)",
+            }} />
+          )}
+        </div>
+
+        {/* ISS */}
+        <div
+          className={`transition-all duration-500 ${
+            isVisible("iss")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("iss") && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[10px] text-accent/50 uppercase tracking-[0.3em]">
+                ◆ Orbital
+              </p>
+              <p className="font-sans text-base text-fg leading-relaxed pl-3 border-l border-accent/20">
+                {issText}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Demographics */}
+        <div
+          className={`transition-all duration-500 ${
+            isVisible("demographics")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("demographics") && (
+            <p className="font-sans text-sm text-fg-muted/60 pl-3 border-l border-border">
+              {data.demographics.framed}
+            </p>
+          )}
+        </div>
+
+        {/* Significance */}
+        <div
+          className={`transition-all duration-700 ${
+            isVisible("significance")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-4"
+          }`}
+        >
+          {isVisible("significance") && (
+            <div className="text-center py-6 space-y-2">
+              <p className="font-mono text-[10px] text-fg-muted/30 tracking-[0.3em] uppercase">
+                Cosmic significance: 0.0000000%
+              </p>
+              <p className="font-sans text-2xl md:text-3xl text-fg-heading font-bold">
+                To you: immeasurable.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Closing */}
+        <div
+          className={`transition-all duration-700 ${
+            isVisible("closing")
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2"
+          }`}
+        >
+          {isVisible("closing") && (
+            <div className="pt-4 border-t border-accent/15">
+              <p className="font-sans text-base text-fg-heading leading-relaxed">
+                {data.closing_line}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Skip hint */}
+      {!skipped && visibleSteps.size > 0 && visibleSteps.size < stepIds.length && (
+        <p className="font-mono text-[9px] text-fg-muted/20 text-center pt-8 tracking-widest uppercase">
           tap to skip
         </p>
       )}

@@ -68,7 +68,7 @@ export async function fetchAsteroid(
     const objects = data.near_earth_objects[dateStr];
 
     if (!objects || objects.length === 0) {
-      cache.set(cacheKey, null, 0);
+      cache.set(cacheKey, null, 5 * 60 * 1000);
       return null;
     }
 
@@ -87,7 +87,7 @@ export async function fetchAsteroid(
     }
 
     if (!closest) {
-      cache.set(cacheKey, null, 0);
+      cache.set(cacheKey, null, 5 * 60 * 1000);
       return null;
     }
 
@@ -103,7 +103,7 @@ export async function fetchAsteroid(
       distance_comparison: getDistanceComparison(missMiles),
     };
 
-    cache.set(cacheKey, result, 0);
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
     return result;
   } catch {
     return null;

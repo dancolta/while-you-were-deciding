@@ -37,7 +37,7 @@ export async function fetchEarthquake(
     const data: USGSResponse = await res.json();
 
     if (!data.features || data.features.length === 0) {
-      cache.set(cacheKey, null, 0);
+      cache.set(cacheKey, null, 5 * 60 * 1000);
       return null;
     }
 
@@ -49,7 +49,7 @@ export async function fetchEarthquake(
       distance_description: largest.properties.place || "Unknown location",
     };
 
-    cache.set(cacheKey, result, 0);
+    cache.set(cacheKey, result, 24 * 60 * 60 * 1000);
     return result;
   } catch {
     return null;
