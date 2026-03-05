@@ -418,21 +418,51 @@ export default function ResultsPage({ data, onShare }: ResultsPageProps) {
 
           {data.nasa_apod && (
             <div
-              className="rounded-lg p-4 mt-2"
+              className="rounded-lg overflow-hidden mt-2"
               style={{ backgroundColor: "var(--bg-surface)" }}
             >
-              <p
-                className="font-mono text-xs font-semibold uppercase tracking-[0.1em] mb-2"
-                style={{ color: "var(--fg-muted)" }}
-              >
-                NASA&apos;s Photo of the Day
-              </p>
-              <p
-                className="text-base font-semibold"
-                style={{ color: "var(--fg-heading)" }}
-              >
-                &ldquo;{data.nasa_apod.title}&rdquo;
-              </p>
+              {/* APOD image preview */}
+              {data.nasa_apod.url && (
+                <a
+                  href={data.nasa_apod.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={data.nasa_apod.url}
+                    alt={data.nasa_apod.title}
+                    className="w-full object-cover"
+                    style={{ maxHeight: "200px" }}
+                  />
+                </a>
+              )}
+              <div className="p-4">
+                <p
+                  className="font-mono text-xs font-semibold uppercase tracking-[0.1em] mb-2"
+                  style={{ color: "var(--fg-muted)" }}
+                >
+                  NASA&apos;s Photo of the Day
+                </p>
+                <p
+                  className="text-base font-semibold"
+                  style={{ color: "var(--fg-heading)" }}
+                >
+                  &ldquo;{data.nasa_apod.title}&rdquo;
+                </p>
+                {data.nasa_apod.url && (
+                  <a
+                    href={data.nasa_apod.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-xs font-medium underline underline-offset-2"
+                    style={{ color: "var(--accent)" }}
+                  >
+                    View full image
+                  </a>
+                )}
+              </div>
             </div>
           )}
         </section>
@@ -448,7 +478,15 @@ export default function ResultsPage({ data, onShare }: ResultsPageProps) {
               color: "var(--fg-heading)",
             }}
           >
-            {data.closing_line}
+            {data.closing_line.includes(". ") ? (
+              <>
+                {data.closing_line.split(". ")[0]}.
+                <br />
+                {data.closing_line.split(". ").slice(1).join(". ")}
+              </>
+            ) : (
+              data.closing_line
+            )}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">

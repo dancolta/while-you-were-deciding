@@ -61,10 +61,19 @@ export default function ShareCard({ data }: ShareCardProps) {
     });
   }
 
-  if (data.wikipedia.length > 0 && facts.length < 6) {
-    const selectedYear = new Date(data.date + "T12:00:00").getFullYear();
-    const evt = data.wikipedia[0];
-    const prefix = evt.year !== selectedYear ? `In ${evt.year}: ` : "";
+  // Add number facts (moon phase + zodiac)
+  if (data.number_fact) {
+    facts.push({
+      text: `${data.number_fact.moon_emoji} ${data.number_fact.moon_phase} \u2022 ${data.number_fact.zodiac} \u2022 Day ${data.number_fact.day_of_year} of ${data.number_fact.total_days}`,
+      color: "#C45D20",
+    });
+  }
+
+  // Fill remaining space with wikipedia events
+  const selectedYear = new Date(data.date + "T12:00:00").getFullYear();
+  for (const evt of data.wikipedia) {
+    if (facts.length >= 7) break;
+    const prefix = evt.year !== selectedYear ? `In ${evt.year}, on this day: ` : "";
     facts.push({
       text: prefix + truncate(evt.text, 200),
       color: "#7C3AED",
@@ -306,7 +315,7 @@ export default function ShareCard({ data }: ShareCardProps) {
             opacity: 0.5,
           }}
         >
-          onthisday.nodesparks.com
+          on-this-day.nodesparks.com
         </span>
       </div>
     </div>

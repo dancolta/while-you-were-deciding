@@ -25,7 +25,8 @@ export async function fetchNasaApod(
   if (cached !== undefined) return cached;
 
   try {
-    const apiKey = process.env.NASA_API_KEY || "DEMO_KEY";
+    const apiKey = process.env.NASA_API_KEY;
+    if (!apiKey) return null; // Skip without a real API key — DEMO_KEY is rate-limited
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 

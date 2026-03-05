@@ -189,7 +189,9 @@ export default function SplashScreen({ onDone }: SplashScreenProps) {
           marginTop: "20px",
         }}
       >
-        Enter a date. See what the world was doing.
+        Enter a date.
+        <br />
+        See what the world was doing.
       </p>
     </div>
   );
