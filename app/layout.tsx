@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Fraunces } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const plexMono = IBM_Plex_Mono({
@@ -23,16 +25,16 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: "On This Day",
-  description: "Enter a date. See what the universe was doing.",
+  description: "Enter a date. See what the world was doing.",
   openGraph: {
     title: "On This Day",
-    description: "Enter a date. See what the universe was doing.",
+    description: "Enter a date. See what the world was doing.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "On This Day",
-    description: "Enter a date. See what the universe was doing.",
+    description: "Enter a date. See what the world was doing.",
   },
 };
 
@@ -47,6 +49,8 @@ export default function RootLayout({
         className={`${plexMono.variable} ${plexSans.variable} ${fraunces.variable} antialiased bg-bg text-fg font-sans`}
       >
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
