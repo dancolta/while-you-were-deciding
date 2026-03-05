@@ -63,12 +63,14 @@ const SHARE_TEMPLATES = [
 
 export default function ShareControls({ data }: ShareControlsProps) {
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const formattedDate = formatDate(data.date);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(false);
     try {
       const hash = btoa(JSON.stringify({ d: data.date }))
         .replace(/[+/=]/g, "")
@@ -84,15 +86,23 @@ export default function ShareControls({ data }: ShareControlsProps) {
 
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+
+      // Use download link
       const a = document.createElement("a");
       a.href = url;
       a.download = `on-this-day-${data.date}.png`;
+      a.style.display = "none";
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+
+      // Cleanup after a short delay to ensure download starts
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 1000);
     } catch {
-      // Silent fail -- card generation can fail on edge cases
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 3000);
     } finally {
       setSaving(false);
     }
@@ -136,7 +146,7 @@ export default function ShareControls({ data }: ShareControlsProps) {
           color: "#ffffff",
         }}
       >
-        {saving ? "Rendering..." : "Save your card"}
+        {saving ? "Rendering..." : saveError ? "Failed — try again" : "Save your card"}
       </button>
 
       {/* Share */}

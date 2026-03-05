@@ -65,7 +65,11 @@ export async function fetchWikipediaEvents(
     const filtered = sourceEvents
       .map((e) => ({
         year: e.year,
-        text: stripHtml(e.text),
+        text: stripHtml(e.text)
+          .replace(/\s*\(pictured\)/gi, "")
+          .replace(/\s*\(shown\)/gi, "")
+          .replace(/\s*\(illustration\)/gi, "")
+          .trim(),
       }));
 
     // Score and sort, pick top 3

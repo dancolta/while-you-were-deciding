@@ -63,7 +63,7 @@ export async function POST(
       const evt = data.wikipedia[0];
       const prefix = evt.year !== selectedYear ? `In ${evt.year}: ` : "";
       facts.push({
-        text: prefix + truncate(evt.text, 100),
+        text: prefix + truncate(evt.text, 200),
         color: "#7C3AED",
       });
     }
