@@ -4,6 +4,11 @@ import type { BriefingData } from "@/lib/types";
 // In-memory store for briefing data (used for card generation)
 const briefingStore = new Map<string, BriefingData>();
 
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 3).replace(/\s+\S*$/, "") + "...";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ hash: string }> }
@@ -14,192 +19,287 @@ export async function POST(
     const data: BriefingData = await request.json();
     briefingStore.set(hash, data);
 
-    // Generate card image using @vercel/og (Satori)
     const { ImageResponse } = await import("@vercel/og");
 
     const formattedDate = new Date(data.date + "T12:00:00").toLocaleDateString(
       "en-US",
       { year: "numeric", month: "long", day: "numeric" }
     );
-    const briefingNum = String(data.briefing_number).padStart(7, "0");
+
+    // Build fact lines with category colors
+    const facts: { text: string; color: string }[] = [];
+    if (data.earthquake) {
+      facts.push({
+        text: `A ${data.earthquake.magnitude} earthquake shook ${data.earthquake.location}`,
+        color: "#C4432A",
+      });
+    }
+    if (data.asteroid) {
+      facts.push({
+        text: `Asteroid ${data.asteroid.name} passed at ${data.asteroid.distance_comparison}`,
+        color: "#2563EB",
+      });
+    }
+    if (data.iss) {
+      facts.push({
+        text: `The ISS flew over ${data.iss.location_name}`,
+        color: "#2563EB",
+      });
+    }
+    if (data.sun) {
+      facts.push({
+        text: `${data.sun.location_name}: sunrise ${data.sun.sunrise}, sunset ${data.sun.sunset} — ${data.sun.day_length_formatted} of light`,
+        color: "#D97706",
+      });
+    }
+    if (data.demographics) {
+      facts.push({
+        text: `${data.demographics.births_per_day.toLocaleString()} took their first breath`,
+        color: "#059669",
+      });
+    }
+    if (data.wikipedia.length > 0 && facts.length < 6) {
+      const selectedYear = new Date(data.date + "T12:00:00").getFullYear();
+      const evt = data.wikipedia[0];
+      const prefix = evt.year !== selectedYear ? `In ${evt.year}: ` : "";
+      facts.push({
+        text: prefix + truncate(evt.text, 100),
+        color: "#7C3AED",
+      });
+    }
 
     const imageResponse = new ImageResponse(
       (
         <div
           style={{
             width: "1080px",
-            height: "1350px",
-            backgroundColor: "#0a0e17",
-            color: "#c8d6e5",
+            height: "1920px",
+            backgroundColor: "#0F1720",
+            color: "#F8FAFC",
             display: "flex",
             flexDirection: "column",
-            padding: "60px",
+            padding: "100px 90px",
             fontFamily: "sans-serif",
+            position: "relative",
           }}
         >
-          {/* Header */}
+          {/* Top gradient accent bar */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "6px",
+              display: "flex",
+              background: "linear-gradient(90deg, #C45D20, #D97706, #C45D20)",
+            }}
+          />
+
+          {/* Brand header */}
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{
+                fontSize: "18px",
+                fontFamily: "monospace",
+                letterSpacing: "0.3em",
+                textTransform: "uppercase" as const,
+                color: "#C45D20",
+              }}
+            >
+              ON THIS
+            </span>
+            <span
+              style={{
+                fontSize: "64px",
+                fontWeight: 700,
+                color: "#F8FAFC",
+                lineHeight: 1.0,
+              }}
+            >
+              DAY
+              <span style={{ color: "#C45D20" }}>.</span>
+            </span>
+          </div>
+
+          {/* Accent divider */}
+          <div
+            style={{
+              width: "80px",
+              height: "3px",
+              backgroundColor: "#C45D20",
+              marginTop: "48px",
+              borderRadius: "2px",
+            }}
+          />
+
+          {/* Date + label */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
+              flexDirection: "column",
+              marginTop: "48px",
             }}
           >
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              style={{
+                fontSize: "72px",
+                fontWeight: 700,
+                color: "#F8FAFC",
+                lineHeight: 1.05,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {formattedDate}
+            </span>
+            {data.label && (
               <span
                 style={{
-                  fontSize: "16px",
-                  letterSpacing: "0.2em",
-                  color: "#6b7b8d",
-                  textTransform: "uppercase",
+                  fontSize: "30px",
+                  fontStyle: "italic",
+                  color: "#C45D20",
+                  marginTop: "16px",
+                  opacity: 0.9,
                 }}
               >
-                Mission Log // {formattedDate}
+                {data.label}
               </span>
-              <span
+            )}
+          </div>
+
+          {/* Thin divider */}
+          <div
+            style={{
+              width: "100%",
+              height: "1px",
+              backgroundColor: "rgba(248, 250, 252, 0.08)",
+              marginTop: "48px",
+            }}
+          />
+
+          {/* Facts */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "28px",
+              marginTop: "48px",
+            }}
+          >
+            {facts.map((fact, i) => (
+              <div
+                key={i}
                 style={{
-                  fontSize: "14px",
-                  color: "#6b7b8d",
-                  opacity: 0.5,
-                  marginTop: "4px",
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: "20px",
                 }}
               >
-                Briefing #{briefingNum}
-              </span>
-            </div>
+                <div
+                  style={{
+                    width: "4px",
+                    height: "40px",
+                    backgroundColor: fact.color,
+                    borderRadius: "2px",
+                    marginTop: "6px",
+                    flexShrink: 0,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "30px",
+                    lineHeight: 1.5,
+                    color: "#E2E8F0",
+                  }}
+                >
+                  {fact.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Spacer */}
+          <div style={{ flex: 1, display: "flex" }} />
+
+          {/* Thin divider */}
+          <div
+            style={{
+              width: "100%",
+              height: "1px",
+              backgroundColor: "rgba(248, 250, 252, 0.12)",
+            }}
+          />
+
+          {/* Closing quote */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              marginTop: "48px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "38px",
+                fontStyle: "italic",
+                color: "#F8FAFC",
+                lineHeight: 1.4,
+                textAlign: "center",
+                opacity: 0.9,
+              }}
+            >
+              {"\u201C"}
+              {data.closing_line}
+              {"\u201D"}
+            </span>
+          </div>
+
+          {/* Decorative accent bar */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "48px",
+            }}
+          >
             <div
               style={{
-                fontSize: "14px",
-                color: "#e74c3c",
-                border: "1px solid rgba(231, 76, 60, 0.3)",
-                padding: "4px 12px",
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                transform: "rotate(-2deg)",
-              }}
-            >
-              DECIDED
-            </div>
-          </div>
-
-          {/* Decision */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              marginTop: "60px",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "14px",
-                color: "#6b7b8d",
-                letterSpacing: "0.2em",
-                textTransform: "uppercase",
-                marginBottom: "12px",
-              }}
-            >
-              While you were deciding
-            </span>
-            <span
-              style={{
-                fontSize: "48px",
-                color: "#e8e8e8",
-                fontWeight: 600,
-                lineHeight: 1.2,
-              }}
-            >
-              {data.decision}
-            </span>
-          </div>
-
-          {/* Data points */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-              marginTop: "50px",
-              fontSize: "20px",
-              lineHeight: 1.5,
-            }}
-          >
-            {data.earthquake && (
-              <span>
-                the ground shook in {data.earthquake.location} (M
-                {data.earthquake.magnitude})
-              </span>
-            )}
-            {data.asteroid && (
-              <span>
-                asteroid {data.asteroid.name} slipped past (
-                {data.asteroid.distance_comparison})
-              </span>
-            )}
-            {data.iss && <span>the ISS passed {data.iss.location_name}</span>}
-            {data.wikipedia.length > 0 && (
-              <span>
-                {data.wikipedia[0].text.length > 120
-                  ? data.wikipedia[0].text.slice(0, 117) + "..."
-                  : data.wikipedia[0].text}
-              </span>
-            )}
-            <span style={{ fontSize: "16px", color: "#6b7b8d" }}>
-              {data.demographics.framed}
-            </span>
-          </div>
-
-          {/* Significance */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              marginTop: "40px",
-            }}
-          >
-            <span style={{ fontSize: "14px", color: "#6b7b8d", opacity: 0.5 }}>
-              Cosmic significance: 0.0000000%
-            </span>
-            <span
-              style={{
-                fontSize: "28px",
-                color: "#e8e8e8",
-                marginTop: "8px",
-              }}
-            >
-              To you: immeasurable.
-            </span>
-          </div>
-
-          {/* Closing */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              marginTop: "auto",
-              paddingTop: "30px",
-              borderTop: "1px solid rgba(200, 214, 229, 0.12)",
-            }}
-          >
-            <span style={{ fontSize: "20px", lineHeight: 1.6 }}>
-              {data.closing_line}
-            </span>
-            <span
-              style={{
-                fontSize: "12px",
-                color: "#6b7b8d",
+                width: "160px",
+                height: "2px",
+                backgroundColor: "#C45D20",
                 opacity: 0.3,
-                marginTop: "20px",
+                borderRadius: "1px",
+              }}
+            />
+          </div>
+
+          {/* Domain */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginTop: "36px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "20px",
+                fontFamily: "monospace",
+                letterSpacing: "0.15em",
+                color: "#C45D20",
+                opacity: 0.5,
               }}
             >
-              whileyouweredeciding.com
+              onthisday.nodesparks.com
             </span>
           </div>
         </div>
       ),
       {
         width: 1080,
-        height: 1350,
+        height: 1920,
       }
     );
 

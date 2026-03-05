@@ -8,50 +8,85 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { hash } = await params;
   return {
-    title: "While You Were Deciding",
+    title: "On This Day",
     description:
-      "Someone got their briefing. See what the universe was doing when you made your biggest decision.",
+      "Someone looked up a date. The universe was busy. Now it's your turn.",
     openGraph: {
-      title: "While You Were Deciding",
+      title: "On This Day",
       description:
-        "Someone got their briefing. See what the universe was doing when you made your biggest decision.",
+        "Someone looked up a date. The universe was busy. Now it's your turn.",
       images: [`/api/og/${hash}`],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "While You Were Deciding",
-      description: "Someone got their briefing. Get yours.",
+      title: "On This Day",
+      description:
+        "Someone looked up a date. The universe was busy. Now it's your turn.",
       images: [`/api/og/${hash}`],
     },
   };
 }
 
 export default async function SharedBriefingPage({ params }: Props) {
-  const { hash } = await params;
+  const _resolved = await params;
 
   return (
     <main className="min-h-[100dvh] flex flex-col items-center justify-center px-4 text-center space-y-8">
-      <div className="space-y-3">
-        <p className="font-mono text-xs text-fg-muted tracking-widest uppercase">
-          Briefing #{hash.slice(0, 7)}
-        </p>
-        <h1 className="font-sans text-2xl md:text-3xl text-fg-heading font-semibold">
-          Someone got their briefing.
+      <div className="space-y-4">
+        {/* Brand header */}
+        <div className="flex flex-col items-center">
+          <span
+            className="text-xs tracking-[0.2em] uppercase"
+            style={{
+              fontFamily: "monospace",
+              color: "#C45D20",
+            }}
+          >
+            ON THIS
+          </span>
+          <span
+            className="text-4xl md:text-5xl font-bold"
+            style={{
+              fontFamily: "var(--font-display)",
+              color: "var(--fg-heading, #0F1720)",
+            }}
+          >
+            DAY<span style={{ color: "#C45D20" }}>.</span>
+          </span>
+        </div>
+
+        <h1
+          className="text-2xl md:text-3xl font-semibold"
+          style={{
+            fontFamily: "var(--font-display)",
+            color: "var(--fg-heading, #0F1720)",
+          }}
+        >
+          Someone looked up a date.
         </h1>
-        <p className="font-sans text-base text-fg-muted max-w-sm mx-auto">
-          The universe was busy that day. So were they. Now it&apos;s your turn.
+        <p
+          className="text-base max-w-sm mx-auto"
+          style={{
+            color: "var(--fg-muted, #6B7280)",
+          }}
+        >
+          The universe was busy. Now it&apos;s your turn.
         </p>
       </div>
 
       <Link
         href="/"
-        className="font-mono text-sm uppercase tracking-[0.3em] text-accent border border-accent px-8 py-4 hover:bg-accent/10 transition-colors"
+        className="text-sm uppercase tracking-[0.15em] font-semibold px-8 py-4 rounded-lg transition-opacity hover:opacity-90"
+        style={{
+          backgroundColor: "#C45D20",
+          color: "#ffffff",
+        }}
       >
-        Get your briefing
+        EXPLORE A DATE
       </Link>
 
-      <p className="font-mono text-[10px] text-fg-muted/30">
+      <p className="text-xs" style={{ color: "var(--fg-muted, #6B7280)", opacity: 0.5 }}>
         No account needed. Nothing is stored.
       </p>
     </main>

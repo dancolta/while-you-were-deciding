@@ -7,81 +7,70 @@ import type {
 } from "@/lib/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATE ARRAYS (from copy/app-copy.js)
+// TEMPLATE ARRAYS
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MEANWHILE_TRANSITIONS = [
-  "While you were carrying that decision, the universe kept its own schedule.",
-  "You were weighing everything. The world was busy with other things.",
-  "Somewhere in all of this, you were deciding. Nobody announced it. Nothing paused.",
-  "The date you picked had a whole other life going on. Here's what it looked like.",
-  "The cosmos did not consult you. It rarely does. This is what it was doing instead.",
-  "You didn't know any of this was happening. You were a little preoccupied.",
-  "On the day everything changed for you, here is what was happening everywhere else.",
+const OPENING_LINES = [
+  "Here's what was happening on {DATE}.",
+  "The world was busy on {DATE}.",
+  "A lot was going on that day.",
+  "Here's what the world was up to on {DATE}.",
+  "You picked an interesting day. Here's what happened.",
 ];
 
 const EARTHQUAKE_FRAMES: Record<string, string[]> = {
   micro: [
-    "The ground shifted in {LOCATION} — a quiet magnitude {MAGNITUDE}, {DISTANCE_DESCRIPTION}. The kind of tremor nobody feels but the instruments catch. The planet stretching in its sleep.",
-    "There was a {MAGNITUDE} tremor near {LOCATION}, {DISTANCE_DESCRIPTION}. Small enough to ignore. The earth had its own restlessness that day.",
+    "A quiet {MAGNITUDE} tremor rippled through {LOCATION}, {DISTANCE_DESCRIPTION}. Barely enough to rattle a cup.",
+    "The ground shifted near {LOCATION} — a {MAGNITUDE}, {DISTANCE_DESCRIPTION}. The planet stretching in its sleep.",
   ],
   minor: [
-    "The ground shook near {LOCATION} — magnitude {MAGNITUDE}, {DISTANCE_DESCRIPTION}. Close enough to rattle a window. Not close enough to matter. You had other things on your mind.",
-    "A {MAGNITUDE} earthquake rolled through {LOCATION}, {DISTANCE_DESCRIPTION}. People nearby paused. Checked the walls. Then went back to whatever they were doing. So did you.",
+    "A {MAGNITUDE} earthquake rolled through {LOCATION}, {DISTANCE_DESCRIPTION}. People paused, then went back to what they were doing.",
+    "The ground shook near {LOCATION} — magnitude {MAGNITUDE}, {DISTANCE_DESCRIPTION}. Enough to notice, not enough to stop.",
   ],
   moderate: [
-    "The ground shook in {LOCATION} — magnitude {MAGNITUDE}, {DISTANCE_DESCRIPTION}. Strong enough to wake people up. Strong enough to make them grab the doorframe. You didn't feel it. You had other things on your mind.",
-    "A {MAGNITUDE} earthquake hit near {LOCATION} that day. {DISTANCE_DESCRIPTION}. The kind that makes the news briefly, then disappears. Like most things do.",
+    "A {MAGNITUDE} earthquake shook {LOCATION}, {DISTANCE_DESCRIPTION}. Strong enough to wake people up.",
+    "The ground broke open near {LOCATION} — magnitude {MAGNITUDE}, {DISTANCE_DESCRIPTION}. The kind that makes the news briefly.",
   ],
   strong: [
-    "A significant {MAGNITUDE} earthquake struck {LOCATION} — {DISTANCE_DESCRIPTION}. The earth made its presence known that day. So did you.",
-    "The ground broke open near {LOCATION}. Magnitude {MAGNITUDE}. {DISTANCE_DESCRIPTION}. Some days ask more of the world than others. This was one of them.",
+    "A significant {MAGNITUDE} earthquake struck {LOCATION}, {DISTANCE_DESCRIPTION}. The earth made its presence known.",
+    "The ground shook hard in {LOCATION}. Magnitude {MAGNITUDE}. {DISTANCE_DESCRIPTION}. Some days ask more of the world than others.",
   ],
 };
 
+const NO_EARTHQUAKE_LINES = [
+  "The Earth was quiet that day. Just for you.",
+  "No significant earthquakes that day. The ground held still.",
+  "The tectonic plates took the day off.",
+];
+
 const ASTEROID_FRAMES: Record<string, string[]> = {
   standard: [
-    "Asteroid {NAME} — roughly the size of {SIZE_COMPARISON} — passed by Earth. {DISTANCE_COMPARISON}. That's not nothing. Astronomers noticed. They always do. It wasn't enough to interrupt anything.",
-    "A rock called {NAME} — about the size of {SIZE_COMPARISON} — cleared Earth, traveling at {SPEED_MPH} mph. The solar system has its own traffic. Most of it misses. This one did.",
+    "Asteroid {NAME} passed Earth at {DISTANCE_COMPARISON} — about the size of {SIZE_COMPARISON}, moving at {SPEED_MPH} mph.",
+    "A rock called {NAME}, roughly the size of {SIZE_COMPARISON}, cleared Earth at {DISTANCE_COMPARISON}. The solar system has its own traffic.",
   ],
   close: [
-    "Asteroid {NAME} passed closer than you might expect — {DISTANCE_COMPARISON}, moving at {SPEED_MPH} mph. About the size of {SIZE_COMPARISON}, minding its own business. As were you.",
-    "{NAME} came in {DISTANCE_COMPARISON}. That's close in cosmic terms. The kind of distance that makes planetary defense scientists update their spreadsheets. It cleared. Everything did, that day.",
+    "Asteroid {NAME} passed closer than you might expect — {DISTANCE_COMPARISON}, about the size of {SIZE_COMPARISON}, moving at {SPEED_MPH} mph.",
+    "{NAME} came in {DISTANCE_COMPARISON}. Close in cosmic terms. About the size of {SIZE_COMPARISON}.",
   ],
   very_close: [
-    "{NAME} — about the size of {SIZE_COMPARISON}, moving at {SPEED_MPH} mph — passed {DISTANCE_COMPARISON} of the planet you were standing on. Nobody flinched. Nobody knew. Including you.",
-    "A rock called {NAME}, about the size of {SIZE_COMPARISON}, threaded the needle — {DISTANCE_COMPARISON}. Closer than you'd probably like to know. The headline that never happened. You made yours instead.",
+    "{NAME} — about the size of {SIZE_COMPARISON}, moving at {SPEED_MPH} mph — passed {DISTANCE_COMPARISON} of Earth. Closer than you'd like to know.",
+    "A rock called {NAME}, about the size of {SIZE_COMPARISON}, threaded the needle — {DISTANCE_COMPARISON}.",
   ],
 };
 
 const ISS_FRAMES = [
-  "At that moment, humanity's only occupied outpost in space was passing over {LOCATION_NAME} at 254 miles up, moving at 17,500 mph. The crew had no idea you were deciding anything. They were busy surviving in a vacuum.",
-  "The International Space Station was somewhere above {LOCATION_NAME} — 254 miles above the surface, completing an orbit every 92 minutes. The astronauts on board were not consulted about your decision. They had enough going on.",
-  "{CREW_COUNT} humans in a pressurized can were hurtling over {LOCATION_NAME} at 17,500 mph while you were deciding. They'd circle the entire planet 15 times that day. None of it had anything to do with you. All of it was real.",
-  "While you were making your choice, the ISS was over {LOCATION_NAME} — coordinates {LAT}, {LONG} — traveling at 17,500 miles per hour, 254 miles straight up. The planet below was busy. So were the skies above it.",
-];
-
-const HEADLINE_FRAMES = [
-  "On {DATE_FORMATTED}, the world's attention was on {HEADLINE}. Somewhere quieter, less noticed, you were in the middle of something too.",
-  "The news cycle had moved on to {HEADLINE}. It didn't stop to ask what you were carrying. News never does.",
-  "History was noting {HEADLINE} in its ledger that day. Private decisions don't make the ledger. They make something harder to measure.",
-  "Editors somewhere were writing headlines about {HEADLINE}. Nobody was writing a headline about what you were doing. Some things are too important for that.",
-];
-
-const PERSPECTIVE_LINES = [
-  "While you were deciding, the ISS completed {ISS_ORBITS} orbits, the Earth shook {EARTHQUAKE_COUNT} times, and {ASTEROID_NAME} passed {ASTEROID_MISS_MILES} miles from this planet. None of it waited for you. None of it needed to.",
-  "On the day of your decision, {EARTHQUAKE_COUNT} earthquakes registered somewhere on Earth. A rock called {ASTEROID_NAME} missed us by {ASTEROID_MISS_MILES} miles. The ISS circled the planet {ISS_ORBITS} times. You made your move. The universe made its.",
-  "The ISS did {ISS_ORBITS} laps. {EARTHQUAKE_COUNT} earthquakes rolled through fault lines nobody was watching. {ASTEROID_NAME} cleared Earth by {ASTEROID_MISS_MILES} miles. And you, somewhere in all that motion, went still long enough to choose.",
-  "{ISS_ORBITS} orbits. {EARTHQUAKE_COUNT} earthquakes. One asteroid. One decision. Everything happened at once. Only one of these things was yours.",
+  "The ISS was flying over {LOCATION_NAME} at 17,500 mph, 254 miles up. Crew of {CREW_COUNT}.",
+  "The International Space Station was above {LOCATION_NAME} — {CREW_COUNT} humans in a pressurized can, orbiting every 92 minutes.",
+  "{CREW_COUNT} astronauts were hurtling over {LOCATION_NAME} at 17,500 mph. They'd circle the planet 15 times that day.",
 ];
 
 const CLOSING_LINES = [
-  "The world didn't hold its breath. It never does. You decided anyway.",
-  "Nobody marked the moment. No orbit adjusted. No fault line paused. You chose anyway. That counts.",
-  "The universe was indifferent. It usually is. That's not a tragedy. You moved through it anyway.",
-  "Everything kept going. You still decided. That's the whole story.",
-  "The world had its agenda. You had yours. Somewhere in that difference, something changed. You made it change.",
-  "Cosmic indifference isn't cruelty. It's permission. The universe didn't stop for you because it didn't need to. You were already enough.",
+  "The world was busy. So were you.",
+  "A lot can happen in a day.",
+  "That's your day. The world remembers.",
+  "Everything kept going. It always does.",
+  "One day. A whole world of things happening at once.",
+  "The world had its agenda. Now you know what it was.",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,7 +83,6 @@ export function seededRandom(seed: string): number {
     const char = seed.charCodeAt(i);
     hash = ((hash << 5) - hash + char) | 0;
   }
-  // Convert to 0-1 range
   return Math.abs(hash % 10000) / 10000;
 }
 
@@ -150,9 +138,11 @@ export function formatEarthquake(data: EarthquakeData, seed: string): string {
   });
 }
 
+export function getNoEarthquakeLine(seed: string): string {
+  return pickTemplate(NO_EARTHQUAKE_LINES, seed + ":noeq");
+}
+
 export function formatAsteroid(data: AsteroidData, seed: string): string {
-  // We don't have raw miss miles in AsteroidData, so use distance_comparison to determine tier
-  // Parse from distance_comparison or default to standard
   const template = pickTemplate(
     ASTEROID_FRAMES["standard"],
     seed + ":ast"
@@ -184,19 +174,20 @@ export function formatHeadline(
   dateFormatted: string,
   seed: string
 ): string {
-  const template = pickTemplate(HEADLINE_FRAMES, seed + ":hl");
-  return interpolate(template, {
-    HEADLINE: event.text,
-    DATE_FORMATTED: dateFormatted,
-  });
+  return `Also on this day in ${event.year}: ${event.text}`;
 }
 
-export function getMeanwhileLine(seed: string): string {
-  return pickTemplate(MEANWHILE_TRANSITIONS, seed + ":mw");
+export function getOpeningLine(dateFormatted: string, seed: string): string {
+  const template = pickTemplate(OPENING_LINES, seed + ":op");
+  return interpolate(template, { DATE: dateFormatted });
 }
 
 export function getClosingLine(seed: string): string {
   return pickTemplate(CLOSING_LINES, seed + ":cl");
+}
+
+export function getMeanwhileLine(seed: string): string {
+  return getOpeningLine("that day", seed);
 }
 
 export function getPerspectiveLine(
@@ -208,11 +199,5 @@ export function getPerspectiveLine(
   },
   seed: string
 ): string {
-  const template = pickTemplate(PERSPECTIVE_LINES, seed + ":pl");
-  return interpolate(template, {
-    ISS_ORBITS: data.issOrbits ?? 15,
-    EARTHQUAKE_COUNT: data.earthquakeCount ?? 17,
-    ASTEROID_NAME: data.asteroidName ?? "a passing rock",
-    ASTEROID_MISS_MILES: data.asteroidMissMiles ?? "millions of",
-  });
+  return pickTemplate(CLOSING_LINES, seed + ":pl");
 }

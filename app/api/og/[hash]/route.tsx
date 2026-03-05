@@ -4,20 +4,19 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ hash: string }> }
 ) {
-  const { hash } = await params;
+  const { hash: _hash } = await params;
 
   try {
     const { ImageResponse } = await import("@vercel/og");
 
-    // For OG images, show a teaser — not the full briefing
     const imageResponse = new ImageResponse(
       (
         <div
           style={{
             width: "1200px",
             height: "630px",
-            backgroundColor: "#0a0e17",
-            color: "#c8d6e5",
+            backgroundColor: "#FAFAF7",
+            color: "#1A2332",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -26,51 +25,77 @@ export async function GET(
             fontFamily: "sans-serif",
           }}
         >
-          <span
+          {/* Brand header */}
+          <div
             style={{
-              fontSize: "14px",
-              letterSpacing: "0.3em",
-              color: "#6b7b8d",
-              textTransform: "uppercase",
-              marginBottom: "20px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
             }}
           >
-            Briefing #{hash.slice(0, 7)}
-          </span>
+            <span
+              style={{
+                fontSize: "16px",
+                fontFamily: "monospace",
+                letterSpacing: "0.2em",
+                textTransform: "uppercase" as const,
+                color: "#C45D20",
+              }}
+            >
+              ON THIS
+            </span>
+            <span
+              style={{
+                fontSize: "64px",
+                fontWeight: 700,
+                color: "#0F1720",
+                lineHeight: 1.1,
+              }}
+            >
+              DAY
+              <span style={{ color: "#C45D20" }}>.</span>
+            </span>
+          </div>
+
+          {/* Tagline */}
           <span
             style={{
-              fontSize: "52px",
-              color: "#e8e8e8",
-              fontWeight: 600,
-              textAlign: "center",
-              lineHeight: 1.2,
-              marginBottom: "24px",
-            }}
-          >
-            While You Were Deciding
-          </span>
-          <span
-            style={{
-              fontSize: "22px",
-              color: "#6b7b8d",
+              fontSize: "24px",
+              color: "#6B7280",
               textAlign: "center",
               maxWidth: "700px",
+              marginTop: "24px",
             }}
           >
-            The universe was busy. You decided anyway. Get your briefing.
+            Enter a date. See what the world was doing.
           </span>
+
+          {/* Accent divider */}
+          <div
+            style={{
+              width: "48px",
+              height: "3px",
+              backgroundColor: "#C45D20",
+              marginTop: "32px",
+              borderRadius: "2px",
+            }}
+          />
+
+          {/* EXPLORE button */}
           <span
             style={{
-              fontSize: "14px",
-              color: "#4ecca3",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              marginTop: "40px",
-              border: "1px solid #4ecca3",
-              padding: "12px 32px",
+              fontSize: "16px",
+              color: "#ffffff",
+              backgroundColor: "#C45D20",
+              letterSpacing: "0.15em",
+              textTransform: "uppercase" as const,
+              marginTop: "36px",
+              padding: "14px 36px",
+              borderRadius: "8px",
+              fontWeight: 600,
             }}
           >
-            Get your briefing
+            EXPLORE
           </span>
         </div>
       ),

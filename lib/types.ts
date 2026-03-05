@@ -3,7 +3,8 @@ export type DatePrecision = "exact" | "month" | "year";
 export interface BriefingRequest {
   date: string;
   precision: DatePrecision;
-  decision: string;
+  decision?: string;
+  label?: string;
   reason?: string;
 }
 
@@ -45,10 +46,34 @@ export interface DemographicsData {
   framed: string;
 }
 
+export interface SunData {
+  sunrise: string;
+  sunset: string;
+  day_length_hours: number;
+  day_length_formatted: string;
+  location_name: string;
+}
+
+export interface NumberFact {
+  day_of_year: number;
+  total_days: number;
+  percent_through: number;
+  moon_phase: string;
+  moon_emoji: string;
+  zodiac: string;
+}
+
+export interface NasaApod {
+  title: string;
+  explanation: string;
+  url: string;
+}
+
 export interface BriefingData {
   date: string;
   precision: DatePrecision;
-  decision: string;
+  decision?: string;
+  label?: string;
   reason?: string;
   wikipedia: WikipediaEvent[];
   earthquake: EarthquakeData | null;
@@ -56,6 +81,9 @@ export interface BriefingData {
   iss: ISSData | null;
   crew: CrewData | null;
   demographics: DemographicsData;
+  sun: SunData | null;
+  number_fact: NumberFact | null;
+  nasa_apod: NasaApod | null;
   closing_line: string;
   meanwhile_line: string;
   perspective_line: string;
@@ -65,7 +93,8 @@ export interface BriefingData {
 export interface BriefingShareData {
   hash: string;
   date: string;
-  decision: string;
+  decision?: string;
+  label?: string;
   wikipedia: WikipediaEvent[];
   earthquake: EarthquakeData | null;
   asteroid: AsteroidData | null;

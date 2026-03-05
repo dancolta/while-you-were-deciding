@@ -31,7 +31,7 @@ export async function fetchWikipediaEvents(
 ): Promise<WikipediaEvent[]> {
   const mm = String(month).padStart(2, "0");
   const dd = String(day).padStart(2, "0");
-  const cacheKey = `wiki:${mm}-${dd}`;
+  const cacheKey = `wiki:${inputYear || "all"}-${mm}-${dd}`;
 
   const cached = cache.get<WikipediaEvent[]>(cacheKey);
   if (cached) return cached;
@@ -55,11 +55,14 @@ export async function fetchWikipediaEvents(
       ...(data.events || []),
     ];
 
-    const filtered = allEvents
-      .filter((e) => {
-        if (inputYear && e.year === inputYear) return false;
-        return true;
-      })
+    // Prefer events from the same year if available, otherwise fall back to historical
+    const sameYearEvents = inputYear
+      ? allEvents.filter((e) => e.year === inputYear)
+      : [];
+
+    const sourceEvents = sameYearEvents.length > 0 ? sameYearEvents : allEvents;
+
+    const filtered = sourceEvents
       .map((e) => ({
         year: e.year,
         text: stripHtml(e.text),

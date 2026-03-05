@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Fraunces } from "next/font/google";
 import "./globals.css";
 
 const plexMono = IBM_Plex_Mono({
@@ -11,24 +11,28 @@ const plexMono = IBM_Plex_Mono({
 const plexSans = IBM_Plex_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const fraunces = Fraunces({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "While You Were Deciding",
-  description:
-    "The universe was busy. You decided anyway. That's the whole story.",
+  title: "On This Day",
+  description: "Enter a date. See what the universe was doing.",
   openGraph: {
-    title: "While You Were Deciding",
-    description:
-      "See what the universe was doing when you made your biggest decision.",
+    title: "On This Day",
+    description: "Enter a date. See what the universe was doing.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "While You Were Deciding",
-    description:
-      "See what the universe was doing when you made your biggest decision.",
+    title: "On This Day",
+    description: "Enter a date. See what the universe was doing.",
   },
 };
 
@@ -38,9 +42,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${plexMono.variable} ${plexSans.variable} antialiased bg-bg text-fg font-sans`}
+        className={`${plexMono.variable} ${plexSans.variable} ${fraunces.variable} antialiased bg-bg text-fg font-sans`}
       >
         {children}
       </body>

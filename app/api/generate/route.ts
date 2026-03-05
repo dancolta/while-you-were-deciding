@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { BriefingRequest, BriefingData, DatePrecision } from "@/lib/types";
-import { sanitizeDecision, sanitizeReason } from "@/lib/sanitize";
+import { sanitizeDecision, sanitizeReason, stripHtml } from "@/lib/sanitize";
 import { fetchWikipediaEvents } from "@/lib/apis/wikipedia";
 import { fetchEarthquake } from "@/lib/apis/earthquake";
 import { fetchAsteroid } from "@/lib/apis/asteroid";
 import { fetchISS } from "@/lib/apis/iss";
+import { fetchSunData } from "@/lib/apis/sun";
+import { fetchNumberFact } from "@/lib/apis/numberfact";
+import { fetchNasaApod } from "@/lib/apis/nasa";
 import { getCrewForDate } from "@/lib/crew-data";
 import { getDemographics } from "@/lib/demographics";
 import {
@@ -62,19 +65,22 @@ function checkRateLimit(ip: string): boolean {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function computeBriefingNumber(date: string, decision: string): number {
-  const input = `${date}:${decision}`;
+function computeBriefingNumber(date: string, extra: string): number {
+  const input = `${date}:${extra}`;
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
     const char = input.charCodeAt(i);
     hash = ((hash << 5) - hash + char) | 0;
   }
-  // Return a positive 4-6 digit number
   return Math.abs(hash % 900000) + 100000;
 }
 
 function isValidPrecision(p: unknown): p is DatePrecision {
   return p === "exact" || p === "month" || p === "year";
+}
+
+function sanitizeLabel(text: string): string {
+  return stripHtml(text).trim().slice(0, 50);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,11 +112,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate
-  const { date, precision, decision, reason } = body;
+  const { date, precision, decision, label, reason } = body;
+  // Optional geolocation (not in BriefingRequest type, extracted separately)
+  const raw = body as unknown as Record<string, unknown>;
+  const latitude = typeof raw.latitude === "number" ? raw.latitude : undefined;
+  const longitude = typeof raw.longitude === "number" ? raw.longitude : undefined;
+  const timezone = typeof raw.timezone === "string" ? raw.timezone : undefined;
 
-  if (!date || !decision) {
+  if (!date) {
     return NextResponse.json(
-      { error: "Date and decision are required." },
+      { error: "Date is required." },
       { status: 400 }
     );
   }
@@ -146,15 +157,9 @@ export async function POST(request: NextRequest) {
   }
 
   // Sanitize
-  const cleanDecision = sanitizeDecision(decision);
+  const cleanDecision = decision ? sanitizeDecision(decision) : undefined;
+  const cleanLabel = label ? sanitizeLabel(label) : undefined;
   const cleanReason = reason ? sanitizeReason(reason) : undefined;
-
-  if (!cleanDecision) {
-    return NextResponse.json(
-      { error: "Decision text is required." },
-      { status: 400 }
-    );
-  }
 
   // Extract date parts
   const month = parsedDate.getUTCMonth() + 1;
@@ -163,12 +168,15 @@ export async function POST(request: NextRequest) {
   const dateStr = date;
 
   // Fetch all APIs in parallel
-  const [wikiResult, earthquakeResult, asteroidResult, issResult] =
+  const [wikiResult, earthquakeResult, asteroidResult, issResult, sunResult, numberFactResult, nasaApodResult] =
     await Promise.allSettled([
       fetchWikipediaEvents(month, day, year),
       fetchEarthquake(dateStr),
       fetchAsteroid(dateStr),
       fetchISS(),
+      fetchSunData(dateStr, latitude, longitude, timezone),
+      fetchNumberFact(dateStr),
+      fetchNasaApod(dateStr),
     ]);
 
   const wikipedia =
@@ -180,10 +188,15 @@ export async function POST(request: NextRequest) {
   const asteroid =
     asteroidResult.status === "fulfilled" ? asteroidResult.value : null;
   const iss = issResult.status === "fulfilled" ? issResult.value : null;
+  const sun = sunResult.status === "fulfilled" ? sunResult.value : null;
+  const number_fact =
+    numberFactResult.status === "fulfilled" ? numberFactResult.value : null;
+  const nasa_apod =
+    nasaApodResult.status === "fulfilled" ? nasaApodResult.value : null;
 
   // Crew and demographics
   const crew = getCrewForDate(dateStr);
-  const demographics = getDemographics();
+  const demographics = getDemographics(dateStr);
 
   // Generate copy
   const seed = dateStr;
@@ -200,12 +213,13 @@ export async function POST(request: NextRequest) {
     seed
   );
 
-  const briefing_number = computeBriefingNumber(dateStr, cleanDecision);
+  const briefing_number = computeBriefingNumber(dateStr, cleanDecision || cleanLabel || "");
 
   const briefingData: BriefingData = {
     date: dateStr,
     precision,
     decision: cleanDecision,
+    label: cleanLabel,
     reason: cleanReason,
     wikipedia,
     earthquake,
@@ -213,6 +227,9 @@ export async function POST(request: NextRequest) {
     iss,
     crew,
     demographics,
+    sun,
+    number_fact,
+    nasa_apod,
     closing_line,
     meanwhile_line,
     perspective_line,
