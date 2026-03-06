@@ -41,6 +41,14 @@ function DrumColumn({
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const suppressScrollRef = useRef(false);
 
+  // Drag state
+  const dragRef = useRef({
+    active: false,
+    startY: 0,
+    startScroll: 0,
+    moved: false,
+  });
+
   // Scroll to selected index on mount and when selectedIndex changes externally
   useEffect(() => {
     const el = scrollRef.current;
@@ -50,7 +58,6 @@ function DrumColumn({
       top: selectedIndex * ITEM_HEIGHT,
       behavior: "smooth",
     });
-    // Allow scroll handler again after animation completes
     const timer = setTimeout(() => {
       suppressScrollRef.current = false;
     }, 300);
@@ -70,6 +77,58 @@ function DrumColumn({
       }
     }, 80);
   }, [items.length, selectedIndex, onSelect]);
+
+  // Pointer drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    dragRef.current = {
+      active: true,
+      startY: e.clientY,
+      startScroll: el.scrollTop,
+      moved: false,
+    };
+    el.style.scrollSnapType = "none";
+    el.style.scrollBehavior = "auto";
+    el.setPointerCapture(e.pointerId);
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag.active) return;
+    const delta = drag.startY - e.clientY;
+    if (Math.abs(delta) > 3) drag.moved = true;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = drag.startScroll + delta;
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag.active) return;
+    drag.active = false;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Snap to nearest item
+    const index = Math.round(el.scrollTop / ITEM_HEIGHT);
+    const clamped = Math.max(0, Math.min(index, items.length - 1));
+    el.style.scrollSnapType = "y mandatory";
+    el.style.scrollBehavior = "smooth";
+    el.scrollTo({ top: clamped * ITEM_HEIGHT, behavior: "smooth" });
+    if (clamped !== selectedIndex) {
+      onSelect(clamped);
+    }
+    // Release capture
+    el.releasePointerCapture(e.pointerId);
+  }, [items.length, selectedIndex, onSelect]);
+
+  const handleItemClick = useCallback(
+    (i: number) => {
+      // Don't fire click if we were dragging
+      if (dragRef.current.moved) return;
+      onSelect(i);
+    },
+    [onSelect]
+  );
 
   const padCount = Math.floor(VISIBLE_ITEMS / 2);
 
@@ -134,6 +193,10 @@ function DrumColumn({
         ref={scrollRef}
         className="drum-scroll"
         onScroll={handleScroll}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         style={{
           height: "100%",
           overflowY: "scroll",
@@ -143,6 +206,8 @@ function DrumColumn({
           position: "relative",
           zIndex: 1,
           scrollbarWidth: "none",
+          cursor: "grab",
+          touchAction: "none",
         }}
       >
         {/* Top padding */}
@@ -165,7 +230,7 @@ function DrumColumn({
               cursor: "pointer",
               userSelect: "none",
             }}
-            onClick={() => onSelect(i)}
+            onClick={() => handleItemClick(i)}
           >
             {item}
           </div>
