@@ -85,21 +85,29 @@ export default function ShareControls({ data }: ShareControlsProps) {
       if (!res.ok) throw new Error("Failed to generate card");
 
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const fileName = `on-this-day-${data.date}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
 
-      // Use download link
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `on-this-day-${data.date}.png`;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-
-      // Cleanup after a short delay to ensure download starts
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 1000);
+      // On mobile, use native share sheet (allows "Save Image")
+      if (
+        navigator.share &&
+        navigator.canShare?.({ files: [file] })
+      ) {
+        await navigator.share({ files: [file] });
+      } else {
+        // Desktop fallback: trigger download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
     } catch {
       setSaveError(true);
       setTimeout(() => setSaveError(false), 3000);
