@@ -27,7 +27,15 @@ function formatDayLength(seconds: number): string {
 }
 
 // Simple reverse geocoding using BigDataCloud (free, no key)
+// Results are cached by rounded coordinates so different dates with
+// the same location don't re-trigger the API.
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
+  const geoCacheKey = `geo:${lat.toFixed(2)}:${lon.toFixed(2)}`;
+  const cachedName = cache.get<string>(geoCacheKey);
+  if (cachedName !== undefined) return cachedName;
+
+  const fallback = `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
@@ -36,16 +44,20 @@ async function reverseGeocode(lat: number, lon: number): Promise<string> {
       { signal: controller.signal }
     );
     clearTimeout(timeout);
-    if (!res.ok) return `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
+    if (!res.ok) return fallback;
     const data = await res.json();
     const city = data.city || data.locality || data.principalSubdivision || "";
     const country = data.countryName || "";
-    if (city && country) return `${city}, ${country}`;
-    if (city) return city;
-    if (country) return country;
-    return `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
+    let name = fallback;
+    if (city && country) name = `${city}, ${country}`;
+    else if (city) name = city;
+    else if (country) name = country;
+
+    // Cache for 7 days — location names don't change
+    cache.set(geoCacheKey, name, 7 * 24 * 60 * 60 * 1000);
+    return name;
   } catch {
-    return `${lat.toFixed(1)}°, ${lon.toFixed(1)}°`;
+    return fallback;
   }
 }
 

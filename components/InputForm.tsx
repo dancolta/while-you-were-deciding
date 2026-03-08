@@ -100,7 +100,24 @@ export default function InputForm({
   const geoRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   // Request geolocation on mount (for sun data)
+  // Cache in localStorage to avoid re-prompting on every visit
   useEffect(() => {
+    const GEO_CACHE_KEY = "otd_geolocation";
+    const GEO_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+    try {
+      const cached = localStorage.getItem(GEO_CACHE_KEY);
+      if (cached) {
+        const { latitude, longitude, ts } = JSON.parse(cached);
+        if (Date.now() - ts < GEO_CACHE_TTL) {
+          geoRef.current = { latitude, longitude };
+          return;
+        }
+      }
+    } catch {
+      // localStorage unavailable or corrupt — continue to geolocation API
+    }
+
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -108,9 +125,20 @@ export default function InputForm({
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
           };
+          try {
+            localStorage.setItem(
+              GEO_CACHE_KEY,
+              JSON.stringify({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                ts: Date.now(),
+              })
+            );
+          } catch {
+            // localStorage full or unavailable — no-op
+          }
         },
         () => {
-          // Permission denied or error — sun section will just not show
           geoRef.current = null;
         },
         { timeout: 5000, maximumAge: 300000 }
